@@ -1,0 +1,689 @@
+---
+title: "StudentCourse2024"
+author: "Ryo FUTAMURA"
+date: "2024-09-20"
+output:
+  html_document:
+    code_folding: hide
+    theme: united
+    toc: yes
+    toc_float: yes
+always_allow_html: yes
+---
+
+```{r include=FALSE}
+setwd("C:/Users/rfuta/OneDrive/発表/講義/IGBFishingClass/angling_experiment/")
+
+#put results here
+# https://docs.google.com/document/d/19yn_1o_EZqDpT_NeNbKh4GYIdT_WcMW2tNQVJ3cojFE/edit?usp=sharing
+
+```
+
+```{r setup, warning=FALSE,message=FALSE}
+##read needed packages
+pacman::p_load(tidyverse,ggdist,readr,lmerTest,ggplotgui,car,performance,glmmTMB,readxl,scales,vegan, rstatix, ggsci)
+```
+
+# data preaparation CPUE
+```{r data preparation individual-level data to CPUE data, warning=FALSE,message=FALSE}
+
+## Read the data set of individual level
+AnglingClass_data <- read_xlsx("AnglingClass_finaldata.xlsx",sheet=1)%>%
+   mutate(Date=as.Date(Date))%>%
+   mutate(log_Length=log(Length),
+          Hooking_depth=case_when(Hooking_depth=="Verydeep"~1,
+                                                             Hooking_depth=="Deep"~1,
+                                                             Hooking_depth=="Shallow"~0,
+                                                        FALSE~NA))%>%
+  
+                        mutate(Bleeding=case_when(Bleeding=="YES"~1,
+                                                        Bleeding=="NO"~0,
+                                                        FALSE~NA))
+```
+
+# Descriptive data Species
+```{r species composition, warning=FALSE,message=FALSE}
+
+Species_data<-AnglingClass_data%>%
+            filter(Species!="NA")%>%
+            filter(!Date %in%  ymd(c("2020-09-02", "2020-09-03")))
+
+
+#chi-square tests
+chisq.test(table(Species_data$Fishing_category,
+                Species_data$Species))
+ 
+################plot the data#############################
+Spp_summary<-Species_data %>%
+  group_by(Year,Fishing_category, Species) %>%
+  summarise(counts = n())%>%
+  arrange(desc(Species)) %>%
+  mutate(prop = round(counts*100/sum(counts), 1),
+         lab.ypos = cumsum(prop) - 0.5*prop)
+
+# Create publication-ready pie chart with a new color palette
+ggplot(Spp_summary, aes(x = "", y = prop, fill = Species)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  facet_wrap(. ~ Fishing_category) +
+  theme_void() +  # Keeps the chart clean without gridlines or axes
+  theme(
+    strip.text = element_text(size = 12, face = "bold"),  # Facet label font size and style
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),  # Centered plot title
+    legend.position = "right",  # Move the legend to the right
+    legend.title = element_text(size = 12, face = "bold"),  # Legend title styling
+    legend.text = element_text(size = 10)  # Legend text size
+  ) +
+  # Change to a different color palette
+  scale_fill_brewer(palette = "RdBu")  # Try other palettes like "Set2", "Paired", etc.
+
+```
+
+# Analysis for CPUE
+```{r CPUE Analysis, warning=FALSE,message=FALSE}
+## full data set of CPUE
+Angling_CPUE_data <- read_xlsx("AnglingClass_fulldata.xlsx",sheet=2)%>%
+                    mutate(Session_ID=as.numeric(Session_ID))%>%
+                   filter(!Date %in%  ymd(c("2020-09-02", 
+                                            "2020-09-03"))) #remove days with same hook
+
+##Negative binomial distribution sub model
+Sub_CPUE_model_nb <- glmmTMB(N_fish~
+                             Fishing_experience_adjusted*Hook_size+
+                             (1|Year)+(1|Angler_ID)+(1|Spot_ID)+(1|Session_ID)+(1|Date_ID),
+                             family = nbinom2, 
+                             data = Angling_CPUE_data)
+
+summary(Sub_CPUE_model_nb)
+Anova(Sub_CPUE_model_nb)
+
+# Create the violin plot
+Forplotting_Angling_CPUE_data<-Angling_CPUE_data%>%
+  filter(CPUE!="NA")
+
+##boxplot recategorised
+ggplot(Forplotting_Angling_CPUE_data, aes(x = Fishing_category, y = CPUE,fill=Fishing_category)) +
+  
+  # Violin plot (distribution of data)
+  geom_violin(
+    color="grey90",
+    width = 0.8,       # Controls the width of the violins
+    alpha = 0.5,       # Transparency for the fill
+    position = position_dodge(0.9),  # To separate violins between groups (if needed)
+    trim = FALSE       # Do not trim the tails of the violins (shows full distribution)
+  ) +
+  
+  # Optionally, add boxplot (summary statistics)
+  geom_boxplot(
+    width = 0.1,       # Slim boxplot inside the violins
+    position = position_dodge(0.9),  # Ensure boxplots are aligned with violins
+    outlier.shape = NA,  # Hide outliers (because we'll show actual points)
+    alpha = 0.6
+  ) +
+  
+  # Add jittered points (actual data points)
+  geom_jitter(
+    width = 0.05,       # Add jitter horizontally to prevent overlap
+    size = 1.5,        # Adjust point size
+    alpha = 0.1,       # Transparency for better visibility
+    color = "black",   # Point color
+  ) +
+   # Add mean points
+  stat_summary(
+    fun = "mean",      # Use the mean for each group
+    geom = "point",    # Plot points
+    shape = 23,        # Change shape of the point (filled point)
+    size = 3,          # Size of the point
+    color = "black",   # Point outline color
+    fill = "white",   # Point fill color
+    position = position_dodge(0.9)  # Align mean points with violins
+  ) +
+  
+  # Axis labels
+  labs(x = "Fishing Experience", 
+       y = "CPUE in 30 min") +
+  
+  # Customize theme for publication
+  theme_bw(base_size = 14) +  # Increase base font size for clarity
+  
+  # Customize axis text and titles
+  theme(
+    axis.title = element_text(face = "bold", size = 14),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size = 14, face = "bold"),  # Facet labels
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Title centered
+    legend.position = "none",
+    panel.spacing = unit(1, "lines"),  # Add spacing between facets
+    plot.margin = margin(1, 1, 1, 1, "cm")  # Increase margin around the plot
+  ) +
+  
+  # Facet wrap for Year and Species
+  facet_wrap(. ~ Year) +
+  
+  # Manually set fill colors for violins
+  scale_fill_manual(values = c("grey80", "grey80")) +
+  
+  # Add cleaner gridlines
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+
+  
+  ggplot(Angling_CPUE_data, aes(x = factor(Fishing_category), y = CPUE, fill = Fishing_category)) +
+    
+    # Violin plot (distribution of data)
+    geom_violin(
+      color = "grey90",
+      width = 0.8,        # Controls the width of the violins
+      alpha = 0.5,        # Transparency for the fill
+      position = position_dodge(0.9),  # To separate violins between groups (if needed)
+      trim = FALSE        # Do not trim the tails of the violins (shows full distribution)
+    ) +
+  
+  # Optionally, add boxplot (summary statistics)
+  geom_boxplot(
+    width = 0.1,        # Slim boxplot inside the violins
+    position = position_dodge(0.9),  # Ensure boxplots are aligned with violins
+    outlier.shape = NA,  # Hide outliers (because we'll show actual points)
+    alpha = 0.6
+  ) +
+  
+  # Add jittered points (actual data points)
+  geom_jitter(
+    width = 0.05,       # Add jitter horizontally to prevent overlap
+    size = 1.5,         # Adjust point size
+    alpha = 0.1,        # Transparency for better visibility
+    color = "black"     # Point color
+  ) +
+  
+  # Add mean points
+  stat_summary(
+    fun = "mean",       # Use the mean for each group
+    geom = "point",     # Plot points
+    shape = 23,         # Change shape of the point (filled point)
+    size = 3,           # Size of the point
+    color = "black",    # Point outline color
+    fill = "white",     # Point fill color
+    position = position_dodge(0.9)  # Align mean points with violins
+  ) +
+  
+  # Axis labels
+  labs(x = "Fishing Experience", 
+       y = "CPUE in 30 min") +
+  
+  # Customize theme for publication
+  theme_bw(base_size = 14) +  # Increase base font size for clarity
+  
+  # Customize axis text and titles
+  theme(
+    axis.title = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size = 12, face = "bold"),  # Facet labels
+    legend.position = "none",
+    panel.spacing = unit(3, "lines"),  # Add spacing between facets
+    plot.margin = margin(1, 1, 1, 1, "cm")  # Increase margin around the plot
+  ) +
+  
+  # Facet wrap for Year and Species
+ # facet_wrap(. ~ Year) +
+  
+  # Manually set fill colors for violins
+  scale_fill_manual(values = c("grey80", "grey80")) +
+  
+  # Add cleaner gridlines
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+```
+
+# Descriptive data
+```{r individual level analysis (Fish size), warning=FALSE,message=FALSE}
+
+## full data set for size analysis
+AnglingClass_size_data <-AnglingClass_data%>%
+   filter(!Date %in%  ymd(c("2020-09-02", "2020-09-03"))) #remove days with same hook
+
+
+##sub model for size analysis
+Sub_size_model<-lmer(log_Length ~
+                             Fishing_experience_adjusted*Hook_size+
+                             (1|Year)+(1|Angler_ID)+(1|Spot_ID)+(1|Session_ID)+(1|Date_ID),
+                      data=AnglingClass_size_data)
+
+summary(Sub_size_model)
+Anova(Sub_size_model)
+
+
+######plotting########
+## plot for fishing category
+ggplot(AnglingClass_size_data, aes(x =  Fishing_category, y = log(Length), fill =  Fishing_category)) +
+  
+  # Violin plot (distribution of data)
+  geom_violin(
+    width = 0.8,       # Controls the width of the violins
+    alpha = 0.5,       # Transparency for the fill
+    position = position_dodge(0.9),  # To separate violins between groups (if needed)
+    trim = FALSE       # Do not trim the tails of the violins (shows full distribution)
+  ) +
+  
+  # Optionally, add boxplot (summary statistics)
+  geom_boxplot(
+    width = 0.1,       # Slim boxplot inside the violins
+    position = position_dodge(0.9),  # Ensure boxplots are aligned with violins
+    outlier.shape = NA,  # Hide outliers (because we'll show actual points)
+    alpha = 0.6
+  ) +
+  
+  # Add jittered points (actual data points)
+  geom_jitter(
+    width = 0.05,       # Add jitter horizontally to prevent overlap
+    size = 1.5,        # Adjust point size
+    alpha = 0.2,       # Transparency for better visibility
+    color = "black",   # Point color
+  ) +
+  
+   # Add mean points
+  stat_summary(
+    fun = "mean",      # Use the mean for each group
+    geom = "point",    # Plot points
+    shape = 23,        # Change shape of the point (filled point)
+    size = 3,          # Size of the point
+    color = "black",   # Point outline color
+    fill = "white",   # Point fill color
+    position = position_dodge(0.9)  # Align mean points with violins
+  ) +
+  
+  # Axis labels
+  labs(x = "Fishing Experience", 
+       y = "log(Fish size (mm))") +
+  
+  # Customize theme for publication
+  theme_bw(base_size = 14) +  # Increase base font size for clarity
+  
+  # Customize axis text and titles
+  theme(
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title = element_text(face = "bold", size = 12),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size = 12, face = "bold"),  # Facet labels
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Title centered
+    legend.position = "none",
+    panel.spacing = unit(1, "lines"),  # Add spacing between facets
+    plot.margin = margin(1, 1, 1, 1, "cm")  # Increase margin around the plot
+  )+
+  
+  # Facet wrap for Year and Species
+ # facet_wrap(. ~ Year) +
+  
+  # Manually set fill colors for violins
+  scale_fill_manual(values = c("grey90", "grey90")) +
+  
+  # Add cleaner gridlines
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+
+######plotting########
+
+## plot for fish hook size*session
+ggplot(AnglingClass_size_data, aes(x =  as.factor(Session_ID), y =log (Length), fill =Hook_size, color =Hook_size)) +
+  
+  # Violin plot (distribution of data)
+  geom_violin(
+    width = 0.8,       # Controls the width of the violins
+    alpha = 0.5,       # Transparency for the fill
+    position = position_dodge(0.9),  # To separate violins between groups (if needed)
+    trim = FALSE       # Do not trim the tails of the violins (shows full distribution)
+  ) +
+
+  # Optionally, add boxplot (summary statistics)
+  geom_boxplot(
+    width = 0.1,       # Slim boxplot inside the violins
+    position = position_dodge(0.9),  # Ensure boxplots are aligned with violins
+    outlier.shape = NA,  # Hide outliers (because we'll show actual points)
+    alpha = 0.6
+  ) +
+
+  # Add jittered points (actual data points)
+  geom_jitter(
+    width = 0.05,       # Add jitter horizontally to prevent overlap
+    size = 1.5,        # Adjust point size
+    alpha = 0.2,       # Transparency for better visibility
+    color = "black",   # Point color
+  ) +
+  
+  
+   # Add mean points
+  stat_summary(
+    fun = "mean",      # Use the mean for each group
+    geom = "point",    # Plot points
+    shape = 23,        # Change shape of the point (filled point)
+    size = 3,          # Size of the point
+    color = "black",   # Point outline color
+    fill = "white",   # Point fill color
+    position = position_dodge(0.9)  # Align mean points with violins
+  ) +
+  
+  # Axis labels
+  labs(x = "Session ID", 
+       y = "log (fish size (mm))") +
+  
+  # Customize theme for publication
+  theme_bw(base_size = 14) +  # Increase base font size for clarity
+  
+  # Customize axis text and titles
+  theme(
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title = element_text(face = "bold", size = 12),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size = 12, face = "bold"),  # Facet labels
+    legend.position = "none",
+    panel.spacing = unit(1, "lines"),  # Add spacing between facets
+    plot.margin = margin(1, 1, 1, 1, "cm")  # Increase margin around the plot
+  )+
+  
+  # Facet wrap for Year and Species
+  facet_wrap(. ~ Hook_size, ncol = 1) +
+  
+  scale_fill_manual(values = c("grey50", "grey50")) +
+  scale_color_manual(values = c("grey50", "grey50")) +
+
+  # Add cleaner gridlines
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+
+```
+
+#Analysis and plot for Hypothesis 2 and 4
+
+```{r individual level analysis (Bleeding), warning=FALSE,message=FALSE}
+## Read the data set of individual level
+
+###Full data
+AnglingClass_bleeding_data <-AnglingClass_data%>%
+                        filter(!is.na(Bleeding))%>%
+                        filter(!Date %in%  ymd(c("2020-09-02", "2020-09-03")))
+   
+
+#Sub model
+Sub_model_bleeding<-glmer(data=AnglingClass_bleeding_data,
+                      Bleeding~
+                            Hook_size*Fishing_experience_adjusted+
+                                (1|Year)+(1|Angler_ID)+(1|Spot_ID)+(1|Session_ID)+(1|Date_ID),
+                                family = binomial(link = "logit"))
+
+summary(Sub_model_bleeding)
+Anova(Sub_model_bleeding)
+
+#odds_ratio
+exp(fixef(Sub_model_bleeding))
+
+##################Plot the data##############################
+# Calculate counts and percentages
+count_data_Bleeding <- AnglingClass_bleeding_data%>%
+  group_by(Fishing_category, Bleeding) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(Fishing_category) %>%
+  mutate(percent = count / sum(count))  # Calculate percentage for each treatment
+
+
+###Plot for each year
+ggplot(count_data_Bleeding, aes(x = Fishing_category, 
+                                      fill = as.factor(Bleeding))) +  # Ensure Hooking_depth is a factor
+  geom_col(aes(y = percent), position = "fill", alpha = 0.7, color = "black") +  # Stacked bars
+  
+  # Manual fill colors for "Hooking_depth"
+  scale_fill_manual(values = c("0" = "white", "1" = "grey30"), 
+                    labels = c("0" = "No", "1" = "Yes")) +
+  
+  # Convert y-axis to percent format
+  scale_y_continuous(labels = scales::percent_format()) +
+  
+  # Classic theme for a cleaner look
+  theme_classic(base_size = 14) +
+  
+  # Add percentage labels inside the bars
+  geom_text(aes(y = percent,  # Map y aesthetic to percent for text placement
+                label = scales::percent(percent, accuracy = 1)), 
+            position = position_fill(vjust = 0.5),  # Position text inside the bars
+            size = 3) +  # Adjust text size
+  
+  # Customize axis labels
+  xlab("Angling Experience") +
+  ylab("Percent") +
+  
+  # Remove legend title (empty string)
+  labs(fill = "")+
+  theme(
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title = element_text(face = "bold", size = 12),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size = 12, face = "bold"),  # Facet labels
+    panel.spacing = unit(1, "lines"),  # Add spacing between facets
+    plot.margin = margin(1, 1, 1, 1, "cm")  # Increase margin around the plot
+  )
+```
+
+```{r individual level analysis (hook depth), warning=FALSE,message=FALSE}
+## full data for the 
+AnglingClass_hooking_data <-AnglingClass_data%>%
+                        filter(!is.na(Bleeding))%>%
+                       filter(!Date %in%  ymd(c("2020-09-02", "2020-09-03")))
+             
+#Sub model
+Sub_model_hooking<-glmer(data=AnglingClass_hooking_data,
+                       Hooking_depth~
+                            Hook_size*Fishing_experience_adjusted+
+                            (1|Year)+(1|Angler_ID)+(1|Spot_ID)+(1|Session_ID)+(1|Date_ID),,
+                                family = binomial(link = "logit"))
+
+summary(Sub_model_hooking)
+Anova(Sub_model_hooking)
+
+#odds_ratio
+exp(fixef(Sub_model_hooking))
+
+###########plotting part################
+## Plotting Fishing experience difference of hooking depth
+# Calculate counts and percentages
+count_data_hooking_depth <- AnglingClass_hooking_data%>%
+  group_by(Hooking_depth, Session_ID,Fishing_category) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(Fishing_category, Session_ID) %>%
+  mutate(percent = count / sum(count))  # Calculate percentage for each treatment
+
+
+###Plot for each year
+ggplot(count_data_hooking_depth, aes(x = Session_ID, 
+                                      fill = as.factor(Hooking_depth))) +  # Ensure Hooking_depth is a factor
+  geom_col(aes(y = percent), position = "fill", alpha = 0.7, color = "black") +  # Stacked bars
+  
+  # Manual fill colors for "Hooking_depth"
+  scale_fill_manual(values = c("0" = "white", "1" = "grey30"), 
+                    labels = c("0" = "Shallow", "1" = "Deep")) +
+  
+  # Convert y-axis to percent format
+  scale_y_continuous(labels = scales::percent_format()) +
+
+  facet_wrap(. ~ Fishing_category, ncol = 1) +
+  
+  # Classic theme for a cleaner look
+  theme_classic(base_size = 14) +
+  
+  # Add percentage labels inside the bars
+  geom_text(aes(y = percent,  # Map y aesthetic to percent for text placement
+                label = scales::percent(percent, accuracy = 1)), 
+            position = position_fill(vjust = 0.5),  # Position text inside the bars
+            size = 3) +  # Adjust text size
+  
+  # Customize axis labels
+  xlab("Angling Experience") +
+  ylab("Percent") +
+  
+  # Customize axis text and titles
+  theme(
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title = element_text(face = "bold", size = 12),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size = 12, face = "bold"),  # Facet labels
+    legend.position = "none",
+    panel.spacing = unit(1, "lines"),  # Add spacing between facets
+    plot.margin = margin(1, 1, 1, 1, "cm")  # Increase margin around the plot
+  )+
+  # Remove legend title (empty string)
+  labs(fill = "")
+
+#
+
+##depth
+count_data_hooking_depth_2 <- AnglingClass_hooking_data%>%
+  group_by(Hooking_depth, Fishing_category) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(Fishing_category) %>%
+  mutate(percent = count / sum(count))  # Calculate percentage for each treatment
+
+
+###Plot for each year
+ggplot(count_data_hooking_depth_2, aes(x = Fishing_category, 
+                                      fill = as.factor(Hooking_depth))) +  # Ensure Hooking_depth is a factor
+  geom_col(aes(y = percent), position = "fill", alpha = 0.7, color = "black") +  # Stacked bars
+  
+  # Manual fill colors for "Hooking_depth"
+  scale_fill_manual(values = c("0" = "white", "1" = "grey30"), 
+                    labels = c("0" = "Shallow", "1" = "Deep")) +
+  
+  # Convert y-axis to percent format
+  scale_y_continuous(labels = scales::percent_format()) +
+  # Classic theme for a cleaner look
+  theme_classic(base_size = 14) +
+  
+  # Add percentage labels inside the bars
+  geom_text(aes(y = percent,  # Map y aesthetic to percent for text placement
+                label = scales::percent(percent, accuracy = 1)), 
+            position = position_fill(vjust = 0.5),  # Position text inside the bars
+            size = 3) +  # Adjust text size
+  
+  # Customize axis labels
+  xlab("Angling Experience") +
+  ylab("Percent") +
+  
+  # Remove legend title (empty string)
+  labs(fill = "")+
+  
+  
+  # Customize axis text and titles
+  theme(
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title = element_text(face = "bold", size = 12),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size = 12, face = "bold"),  # Facet labels
+    panel.spacing = unit(1, "lines"),  # Add spacing between facets
+    plot.margin = margin(1, 1, 1, 1, "cm")  # Increase margin around the plot
+  )
+
+
+
+```
+
+```{r relationship between bleeding and depth}
+##species data 
+chisq.test(table(AnglingClass_data$Bleeding,
+                         AnglingClass_data$Hooking_depth))
+
+
+# Create a contingency table for Bleeding and Hooking_depth
+contingency_table <- table(AnglingClass_data$Bleeding, AnglingClass_data$Hooking_depth)
+
+# Convert the contingency table to a data frame for ggplot
+contingency_df <- as.data.frame(contingency_table)
+colnames(contingency_df) <- c("Bleeding", "Hooking_depth", "Count")
+
+# Recode 0/1 as No/Yes for Bleeding and Hooking_depth
+contingency_df$Bleeding <- factor(contingency_df$Bleeding, levels = c(0, 1), labels = c("No", "Yes"))
+contingency_df$Hooking_depth <- factor(contingency_df$Hooking_depth, levels = c(0, 1), labels = c("Shallow", "Deep"))
+
+# Calculate percentage within each Hooking_depth group
+contingency_df <- contingency_df %>%
+  group_by(Hooking_depth) %>%
+  mutate(Percent = Count / sum(Count) * 100)  # Calculate percentage
+
+# Plot the contingency table using ggplot with percentages
+ggplot(contingency_df, aes(x = Hooking_depth, y = Percent, fill = Bleeding)) +
+  
+  # Create a stacked bar plot
+  geom_bar(stat = "identity", position = "fill", color = "black", alpha = 0.7) +
+  
+  # Customize the colors for "Bleeding"
+  scale_fill_manual(values = c("0" = "white", "1" = "grey30"), 
+                    labels = c("No" = "No Bleeding", "Yes" = "Bleeding")) +
+  
+  # Add labels
+  labs(x = "Hooking Depth", y = "Percentage", fill = "Bleeding Status") +
+  
+  # Convert y-axis to percent format
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  
+  # Add percentage labels inside the bars
+  geom_text(aes(label = paste0(round(Percent, 1), "%")), 
+            position = position_fill(vjust = 0.5), 
+            size = 3) +
+  
+  # Theme adjustments
+  theme_classic(base_size = 14) +
+  
+  # Customize axis labels
+  theme(
+    axis.title = element_text(face = "bold", size = 14),
+    axis.text = element_text(size = 12),
+    legend.position = "right"
+  )
+
+```
+
+
+```{r plots for some testing}
+#easy way to Visualize
+#Viaualize angling skills 
+# ggplot(data=AnglingClass_data, aes(x=Fishing_experience_standartized,fill=as.factor(Year)))+
+#      geom_histogram()
+# 
+# ggplot(data=AnglingClass_data, aes(x=Fishing_experience_adjusted,fill=as.factor(Year)))+
+#      geom_histogram()
+# 
+# ggplot(data=AnglingClass_data, aes(x=Fishing_experience_score,fill=as.factor(Year)))+
+#      geom_histogram()
+# 
+
+
+#plots and several things
+#easy one
+ggplot(AnglingClass_hooking_data, aes(x = Fishing_experience,
+                                         color = as.factor(Hooking_depth),
+                                         fill = as.factor(Hooking_depth))) +
+  geom_bar(position = "fill")+
+  facet_wrap(.~Year)
+
+
+#easy one
+ggplot(AnglingClass_hooking_data, aes(x = Fishing_experience_adjusted,y=Hooking_depth,
+                                         color = as.factor(Year),
+                                         fill = as.factor(Year))) +
+  geom_point()+
+  geom_smooth(method = "glm", method.args = list(family = "binomial")) 
+  
+
+# sjPlot::plot_model(full_model_hooking_depth2, type = "pred",
+#                    terms = c("Fishing_experience_adjusted", "Year"))
+
+
+
+```
+
