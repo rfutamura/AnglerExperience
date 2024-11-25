@@ -12,6 +12,7 @@ always_allow_html: yes
 ---
 
 ```{r include=FALSE}
+#setwd("X:/Biologie der Fische, Fischerei und Aquakultur/Arlinghaus/Sampling_2024/coding")
 setwd("C:/Users/rfuta/OneDrive/発表/講義/IGBFishingClass/angling_experiment/")
 
 #put results here
