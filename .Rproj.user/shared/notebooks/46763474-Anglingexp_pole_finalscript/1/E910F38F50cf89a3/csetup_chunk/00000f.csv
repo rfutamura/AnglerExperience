@@ -1,0 +1,4 @@
+"0","setwd(""C:/Users/rfuta/OneDrive/研究/Germany/Analysis/AnglingClass/git"")"
+"0",""
+"0","##read needed packages"
+"0","pacman::p_load(tidyverse,ggdist,readr,lmerTest,ggplotgui,car,performance,glmmTMB,readxl,scales,vegan, rstatix, ggsci,viridis, RColorBrewer,effectsize,perfomance)"

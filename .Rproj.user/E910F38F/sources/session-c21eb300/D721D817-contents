@@ -82,6 +82,30 @@ Fig_1_SppComposition
 ggsave("Fig1.pdf",plot=Fig_1_SppComposition,width=8,height=3)
 ```
 
+
+#function for validating random factor
+```{r}
+# Function to compare models using LRT
+evaluate_models <- function(reference_model, models_to_compare, data) {
+  results <- list() # To store results
+  
+  for (i in seq_along(models_to_compare)) {
+    # Fit the model dynamically
+    model <- eval(parse(text = models_to_compare[[i]]))
+    
+    # Perform LRT with the reference model
+    lrt <- anova(reference_model, model, test = "LRT")
+    
+    # Store the results
+    results[[paste0("Model_", i)]] <- lrt
+  }
+  
+  return(results)
+}
+
+```
+
+
 # CPUE analysis 
 ```{r CPUE Analysis, warning=FALSE,message=FALSE}
 ## full data set of CPUE
@@ -180,7 +204,7 @@ AnglingClass_size_data <-AnglingClass_data%>%
 
 
 ##sub model for size analysis
-Size_model<-lmer(log_Length~Fishing_experience_adjusted*Hook_size+
+Size_model<-lmer(Length~Fishing_experience_adjusted*Hook_size+
                              (1|Year)+(1|Angler_ID)+(1|Spot_ID)+(1|Session_ID)+(1|Date_ID),
                       data=AnglingClass_size_data)
 
@@ -195,7 +219,7 @@ cohens_d(d1,d2)
 
 ######plotting########
 ## plot for fishing category
-Fig_3<-ggplot(AnglingClass_size_data, aes(x =  Fishing_category, y = log(Length),
+Fig_3<-ggplot(AnglingClass_size_data, aes(x =  Fishing_category, y = (Length),
                                           fill =  Fishing_category)) +
   # Violin plot
   geom_violin(
@@ -230,7 +254,7 @@ Fig_3<-ggplot(AnglingClass_size_data, aes(x =  Fishing_category, y = log(Length)
   ) +
 #Axis labels
   labs(x = "Fishing Experience", 
-       y = "log (Fish size[mm])") +
+       y = "Total length (mm)") +
 # Publication
   theme_bw(base_size = 12) +  
 # Axis text and titles
@@ -287,28 +311,8 @@ model_list <- c(
 )
 
 
-#######################
-# Function to compare models using LRT
-evaluate_models <- function(reference_model, models_to_compare, data) {
-  results <- list() # To store results
-  
-  for (i in seq_along(models_to_compare)) {
-    # Fit the model dynamically
-    model <- eval(parse(text = models_to_compare[[i]]))
-    
-    # Perform LRT with the reference model
-    lrt <- anova(reference_model, model, test = "LRT")
-    
-    # Store the results
-    results[[paste0("Model_", i)]] <- lrt
-  }
-  
-  return(results)
-}
-
 # Evaluate models systematically
 evaluate_models(Model_hooking, model_list, AnglingClass_hooking_data)
-
 
 ########### figure ################
 ## Plotting Fishing experience difference of hooking depth
@@ -377,6 +381,22 @@ summary(Model_bleeding)
 
 #odds_ratio
 exp(fixef(Model_bleeding))
+
+##
+
+# Models for random factor evaluation
+model_list <- c(
+  "glmer(data=AnglingClass_bleeding_data, Bleeding~Fishing_experience_adjusted*Hook_size + (1|Angler_ID)+(1|Spot_ID)+(1|Session_ID)+(1|Date_ID), family = binomial(link = 'logit'))",
+  "glmer(data=AnglingClass_bleeding_data, Bleeding~Fishing_experience_adjusted*Hook_size + (1|Year)+(1|Spot_ID)+(1|Session_ID)+(1|Date_ID), family = binomial(link = 'logit'))",
+  "glmer(data=AnglingClass_bleeding_data, Bleeding~Fishing_experience_adjusted*Hook_size + (1|Year)+(1|Angler_ID)+(1|Session_ID)+(1|Date_ID), family = binomial(link = 'logit'))",
+  "glmer(data=AnglingClass_bleeding_data, Bleeding~Fishing_experience_adjusted*Hook_size + (1|Year)+(1|Angler_ID)+(1|Spot_ID)+(1|Date_ID), family = binomial(link = 'logit'))",
+  "glmer(data=AnglingClass_bleeding_data, Bleeding~Fishing_experience_adjusted*Hook_size + (1|Year)+(1|Angler_ID)+(1|Spot_ID)+(1|Session_ID), family = binomial(link = 'logit'))"
+)
+
+
+# Evaluate models systematically
+evaluate_models(Model_bleeding, model_list, AnglingClass_bleeding_data)
+
 
 
 ##################figure ##############################

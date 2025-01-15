@@ -1,0 +1,7 @@
+"0","Angling_CPUE_data <- read_xlsx(""AnglingClass_fulldata.xlsx"",sheet=2)%>%
+                    mutate(Session_ID=as.numeric(Session_ID))%>%
+                   filter(!Date %in%  ymd(c(""2020-09-02"", 
+                                            ""2020-09-03""))) #remove days with same hook
+"
+"2"," エラー: `path` does not exist: ‘AnglingClass_fulldata.xlsx’
+"
