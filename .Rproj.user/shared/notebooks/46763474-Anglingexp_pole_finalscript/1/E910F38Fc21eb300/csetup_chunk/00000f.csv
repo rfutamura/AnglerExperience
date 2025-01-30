@@ -1,0 +1,8 @@
+"0","
+##read needed packages
+pacman::p_load(tidyverse,ggdist,readr,lmerTest,ggplotgui,car,performance,glmmTMB,readxl,scales, rstatix, ggsci,viridis, RColorBrewer,effectsize,perfomance, pwr)
+"
+"2"," エラー:   想定外のシンボルです  以下の部分: 
+ ""##read needed packages 
+ pacman"" 
+"

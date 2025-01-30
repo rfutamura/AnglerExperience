@@ -1,0 +1,1 @@
+{"frames":[{"func":"residuals(Species_model, type = \"pearson\")","file":"","line_number":0,"end_line_number":0,"character_number":0,"end_character_number":0}],"message":" エラー:  オブジェクト 'Species_model' がありません \n"}

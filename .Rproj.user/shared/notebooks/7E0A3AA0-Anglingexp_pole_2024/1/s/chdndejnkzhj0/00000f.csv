@@ -1,0 +1,5 @@
+"0","
+sum(residuals(Species_model, type = ""pearson"")^2) / df.residual(Species_model)
+"
+"2"," エラー:  オブジェクト 'Species_model' がありません 
+"
