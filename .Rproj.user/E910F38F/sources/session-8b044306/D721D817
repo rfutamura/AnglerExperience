@@ -3,7 +3,7 @@
     "path": "C:/Users/rfuta/OneDrive/研究/Germany/Analysis/AnglingClass/git/Anglingexp_pole_finalscript.Rmd",
     "project_path": "Anglingexp_pole_finalscript.Rmd",
     "type": "r_markdown",
-    "hash": "992561627",
+    "hash": "1389650864",
     "contents": "",
     "dirty": false,
     "created": 1734450634594.0,
@@ -12,16 +12,16 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "last_setup_crc32": "365e1684861f43fc",
-        "cursorPosition": "555,0",
-        "scrollLine": "545"
+        "last_setup_crc32": "",
+        "cursorPosition": "610,0",
+        "scrollLine": "566"
     },
     "folds": "",
-    "lastKnownWriteTime": 1738167383,
+    "lastKnownWriteTime": 1738591678,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1738167383257,
+    "last_content_update": 1738591678174,
     "read_only": false,
     "read_only_alternatives": []
 }

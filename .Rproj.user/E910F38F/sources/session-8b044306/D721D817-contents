@@ -539,7 +539,7 @@ Fig_4<-ggplot(count_data_Bleeding, aes(x = Fishing_category,
     legend.title=element_text(size=12))+
   guides(fill=guide_legend(title="Bleeding"))
 
-
+#save figure
 ggsave("Fig4.pdf",plot=Fig_4,width=6,height=4)
 
 ```
@@ -607,7 +607,8 @@ contingency_df <- contingency_df %>%
     plot.margin = margin(1, 1, 1, 1, "cm"),
     legend.title=element_text(size=12))+
   guides(fill=guide_legend(title="Bleeding"))
-  
+
+#save figure
 ggsave("Fig5.pdf",plot=Fig_5,width=6,height=4)
 
 ```
