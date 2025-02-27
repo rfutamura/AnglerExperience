@@ -13,7 +13,7 @@ always_allow_html: yes
 
 
 ```{r setup, warning=FALSE,message=FALSE}
-setwd("C:/Users/rfuta/OneDrive/研究/Germany/Analysis/AnglingClass/git") #set working directory
+setwd() #set working directory
 
 ##read needed packages
 pacman::p_load(tidyverse,ggdist,readr,lmerTest,ggplotgui,car,performance,glmmTMB,readxl,scales, rstatix, ggsci,viridis, RColorBrewer,effectsize,perfomance, pwr)
@@ -137,8 +137,7 @@ Fig_1<-ggplot(Forplot_Angling_CPUE_data,
     fill = "white",   
     position = position_dodge(0.9)) +
   # axis labels
-  labs(x = "Angler experience", 
-       y = "CPUE (fish/30 min)") +
+  labs(x = "Angler experience", y = "CPUE (fish/30 min)") +
   theme_bw(base_size = 12) +  
   #custom axis text and titles
   theme(
@@ -248,8 +247,7 @@ Fig_2<-ggplot(AnglingClass_size_data, aes(x =  Fishing_category, y = (Length),
     position = position_dodge(0.9)  
   ) +
 # axis labels
-  labs(x = "Angler experience", 
-       y = "Total length (mm)") +
+  labs(x = "Angler experience", y = "Total length (mm)") +
   theme_bw(base_size = 12) +  
   theme(
     axis.title.y = element_text(margin = margin(r = 8)),
@@ -327,7 +325,7 @@ Fig_3<-ggplot(Count_data_hooking_depth, aes(x = Fishing_category,
                 label = scales::percent(percent, accuracy = 1)), 
             position = position_fill(vjust = 0.5),  
             size = 3) + 
-  xlab("Angler experience") +
+  xlab("Angler experience")+
   ylab("Percent") +
   theme(
     axis.title.y = element_text(margin = margin(r = 12)),
@@ -403,7 +401,7 @@ Fig_4<-ggplot(count_data_Bleeding, aes(x = Fishing_category,
             position = position_fill(vjust = 0.5),  
             size = 3) +
 #Customize axis labels
-  xlab("Angler experience") +
+  xlab("Angler experience")+
   ylab("Percent") +
   labs(fill = "")+
   theme(
