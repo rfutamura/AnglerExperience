@@ -1,7 +1,0 @@
-"0","
-# Contingency table to a data frame for ggplot
-contingency_df <- as.data.frame(AnglingClass_data$Bleeding, AnglingClass_data$Hooking_depth)
-"
-"2"," as.data.frame.numeric(AnglingClass_data$Bleeding, AnglingClass_data$Hooking_depth) でエラー: 
-  'row.names' is not a character or integer vector of length 2636
-"

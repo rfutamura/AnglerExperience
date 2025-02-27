@@ -1,9 +1,0 @@
-"0","d_1<-Angling_CPUE_data %>% filter(Fishing_category==""Experienced"") %>% pull(CPUE)
-d_2<-Angling_CPUE_data %>% filter(Fishing_category ==""Novice"") %>% pull(CPUE)               
-cohens_d(d_1,d_2)
-"
-"1","Cohen's d |       95% CI
-------------------------
-0.67      | [0.46, 0.88]
-[36m
-- Estimated using pooled SD.[39m"

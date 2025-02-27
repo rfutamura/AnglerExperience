@@ -1,0 +1,12 @@
+"0","## Read the data set of individual level"
+"0","AnglingClass_data <- read_xlsx(""AnglingExp_script.xlsx"",sheet=1)%>%"
+"0","   mutate(Date=as.Date(Date))%>%"
+"0","   mutate(Hooking_depth=case_when(Hooking_depth==""Verydeep""~1,"
+"0","                                                             Hooking_depth==""Deep""~1,"
+"0","                                                             Hooking_depth==""Shallow""~0,"
+"0","                                                        FALSE~NA))%>%  #recode hooking depth"
+"0","                        mutate(Bleeding=case_when(Bleeding==""YES""~1,"
+"0","                                                        Bleeding==""NO""~0,"
+"0","                                                        FALSE~NA)) #recode bleeding"
+"2"," エラー: `path` does not exist: ‘AnglingExp_script.xlsx’
+"
